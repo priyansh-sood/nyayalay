@@ -11,7 +11,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libsm6 \
     libxrender1 \
     libxext6 \
-    libgl1-mesa-glx \
+    libgl1 \
+    libglx-mesa0 \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
