@@ -20,6 +20,8 @@ interface Case {
   days_until_next: number | null;
   is_urgent: boolean;
   estimated_duration_minutes: number;
+  description: string | null;
+  assigned_user_id: number | null;
 }
 
 interface CaseTableProps {
