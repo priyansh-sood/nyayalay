@@ -1,4 +1,4 @@
-import os
+ï»¿import os
 import io
 import logging
 from typing import Optional
@@ -92,4 +92,4 @@ def _fallback_summary(text: str) -> str:
     top = sentences[:5]
     if not top:
         return "Summary not available. Please review the document manually."
-    return "• " + "\n• ".join(top)
+    return "- " + "\n- ".join(top)
