@@ -132,7 +132,7 @@ def generate_rag_answer(query: str, contexts: List[Dict[str, Any]], case_id: Opt
     try:
         from google import genai
         client = genai.Client(api_key=GEMINI_API_KEY)
-        response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
+        response = client.models.generate_content(model="gemini-1.5-flash", contents=prompt)
         return response.text.strip()
     except Exception as e:
         logger.error(f"Gemini RAG answer failed: {e}")

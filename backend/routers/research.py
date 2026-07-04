@@ -27,7 +27,7 @@ def _gemini_direct_answer(query: str) -> str:
             "Answer the following legal query precisely. Cite relevant IPC sections and landmark cases.\n\n"
             f"Query: {query}"
         )
-        response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
+        response = client.models.generate_content(model="gemini-1.5-flash", contents=prompt)
         return response.text.strip()
     except Exception as e:
         import logging
