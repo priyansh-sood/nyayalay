@@ -46,7 +46,6 @@ def _ocr_pdf_pages(file_bytes: bytes) -> str:
             texts.append(_ocr_image_bytes(img_bytes))
         return "\n\n".join(texts)
     except ImportError:
-        logger.info("PyMuPDF not available, skipping page-level OCR")
         return ""
 
 
@@ -69,9 +68,8 @@ def generate_ai_summary(text: str, case_context=None) -> str:
     if not gemini_key:
         return _fallback_summary(text)
     try:
-        import google.generativeai as genai
-        genai.configure(api_key=gemini_key)
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        from google import genai
+        client = genai.Client(api_key=gemini_key)
         context_hint = f"\nCase context: {case_context}" if case_context else ""
         prompt = (
             "You are a senior Indian legal assistant. Summarise the following legal document "
@@ -80,7 +78,10 @@ def generate_ai_summary(text: str, case_context=None) -> str:
             f"Use plain language suitable for a cause-list summary.{context_hint}\n\n"
             f"Document text:\n{text[:8000]}"
         )
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt
+        )
         return response.text.strip()
     except Exception as e:
         logger.error(f"Gemini summary failed: {e}")

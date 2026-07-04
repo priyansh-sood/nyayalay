@@ -1,4 +1,4 @@
-import os
+﻿import os
 import logging
 from typing import List, Optional, Dict, Any
 
@@ -39,14 +39,13 @@ def _get_embedding(text: str) -> Optional[List[float]]:
     if not GEMINI_API_KEY:
         return None
     try:
-        import google.generativeai as genai
-        genai.configure(api_key=GEMINI_API_KEY)
-        result = genai.embed_content(
+        from google import genai
+        client = genai.Client(api_key=GEMINI_API_KEY)
+        result = client.models.embed_content(
             model="models/text-embedding-004",
-            content=text[:8000],
-            task_type="retrieval_document",
+            contents=text[:8000],
         )
-        return result["embedding"]
+        return result.embeddings[0].values
     except Exception as e:
         logger.error(f"Gemini embedding failed: {e}")
         return None
@@ -66,7 +65,6 @@ def _chunk_text(text: str, chunk_size: int = 800, overlap: int = 100) -> List[st
 def index_document(doc_id: int, case_id: int, text: str, metadata: dict) -> bool:
     index = get_pinecone_index()
     if index is None:
-        logger.warning("Pinecone unavailable; skipping index")
         return False
     chunks = _chunk_text(text)
     vectors = []
@@ -93,67 +91,48 @@ def query_documents(query: str, case_id: Optional[int] = None, top_k: int = 5) -
     index = get_pinecone_index()
     if index is None:
         return []
-    embedding = None
-    if GEMINI_API_KEY:
-        try:
-            import google.generativeai as genai
-            genai.configure(api_key=GEMINI_API_KEY)
-            result = genai.embed_content(
-                model="models/text-embedding-004",
-                content=query[:8000],
-                task_type="retrieval_query",
-            )
-            embedding = result["embedding"]
-        except Exception as e:
-            logger.error(f"Gemini query embedding failed: {e}")
+    embedding = _get_embedding(query)
     if embedding is None:
         return []
     try:
-        filter_dict = {}
-        if case_id is not None:
-            filter_dict["case_id"] = {"$eq": case_id}
+        filter_dict = {"case_id": {"": case_id}} if case_id is not None else None
         response = index.query(
             vector=embedding,
             top_k=top_k,
             include_metadata=True,
-            filter=filter_dict if filter_dict else None,
+            filter=filter_dict,
         )
-        results = []
-        for match in response.matches:
-            results.append({
-                "score": round(match.score, 4),
-                "doc_id": match.metadata.get("doc_id"),
-                "case_id": match.metadata.get("case_id"),
-                "filename": match.metadata.get("filename", "Unknown"),
-                "text": match.metadata.get("text", ""),
-                "chunk_index": match.metadata.get("chunk_index", 0),
-            })
-        return results
+        return [
+            {
+                "score": round(m.score, 4),
+                "doc_id": m.metadata.get("doc_id"),
+                "case_id": m.metadata.get("case_id"),
+                "filename": m.metadata.get("filename", "Unknown"),
+                "text": m.metadata.get("text", ""),
+                "chunk_index": m.metadata.get("chunk_index", 0),
+            }
+            for m in response.matches
+        ]
     except Exception as e:
         logger.error(f"Pinecone query failed: {e}")
         return []
 
 
 def generate_rag_answer(query: str, contexts: List[Dict[str, Any]], case_id: Optional[int] = None) -> str:
-    if not GEMINI_API_KEY:
+    if not GEMINI_API_KEY or not contexts:
         return _fallback_answer(query, contexts)
-    if not contexts:
-        return "No relevant documents found. Please upload case documents to enable legal research queries."
     context_text = "\n\n---\n\n".join(
         f"[{c['filename']} | Score: {c['score']}]\n{c['text']}" for c in contexts
     )
     prompt = (
-        "You are an expert Indian legal assistant with deep knowledge of the Indian Penal Code, "
-        "CrPC, CPC, and landmark judgments. Answer the following legal query based on the "
-        "provided document context. Cite the source document filename when referencing specific "
-        "passages. Be precise, cite relevant IPC sections if applicable, and format your answer clearly.\n\n"
-        f"Query: {query}\n\nDocument Context:\n{context_text[:6000]}"
+        "You are an expert Indian legal assistant. Answer the following legal query based on "
+        "the provided document context. Cite source filenames and relevant IPC sections.\n\n"
+        f"Query: {query}\n\nContext:\n{context_text[:6000]}"
     )
     try:
-        import google.generativeai as genai
-        genai.configure(api_key=GEMINI_API_KEY)
-        model = genai.GenerativeModel("gemini-1.5-flash")
-        response = model.generate_content(prompt)
+        from google import genai
+        client = genai.Client(api_key=GEMINI_API_KEY)
+        response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
         return response.text.strip()
     except Exception as e:
         logger.error(f"Gemini RAG answer failed: {e}")
@@ -162,10 +141,6 @@ def generate_rag_answer(query: str, contexts: List[Dict[str, Any]], case_id: Opt
 
 def _fallback_answer(query: str, contexts: List[Dict[str, Any]]) -> str:
     if not contexts:
-        return "No relevant context found. Please ensure documents are uploaded and indexed."
+        return "No relevant context found. Please upload documents and index them first."
     top = contexts[0]
-    return (
-        f"Based on '{top['filename']}' (relevance: {top['score']}):\n\n"
-        f"{top['text']}\n\n"
-        f"[AI summary unavailable - configure GEMINI_API_KEY for full RAG answers]"
-    )
+    return f"Based on '{top['filename']}' (relevance: {top['score']}):\n\n{top['text']}"

@@ -6,7 +6,7 @@ from database import get_db
 from models import User
 from schemas import ResearchQuery, ResearchResult
 from routers.auth import get_current_user
-from services.rag import query_documents
+from services.rag import query_documents, generate_rag_answer
 
 router = APIRouter(prefix="/research", tags=["research"])
 
@@ -14,40 +14,25 @@ router = APIRouter(prefix="/research", tags=["research"])
 def _gemini_direct_answer(query: str) -> str:
     gemini_key = os.getenv("GEMINI_API_KEY")
     if not gemini_key:
-        return _keyword_fallback(query)
+        return "Configure GEMINI_API_KEY for AI-powered legal research."
     try:
-        import google.generativeai as genai
-        genai.configure(api_key=gemini_key)
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        from google import genai
+        client = genai.Client(api_key=gemini_key)
         prompt = (
-            "You are an expert Indian legal assistant with deep knowledge of the Indian Penal Code (IPC), "
-            "Code of Criminal Procedure (CrPC), Code of Civil Procedure (CPC), and landmark Supreme Court "
-            "and High Court judgments. Answer the following legal query precisely and clearly. "
-            "Cite relevant IPC sections, landmark cases, and legal principles where applicable. "
-            "Format your answer with clear headings and bullet points where appropriate.\n\n"
-            f"Legal Query: {query}"
+            "You are an expert Indian legal assistant specializing in the Indian Penal Code (IPC), "
+            "CrPC, CPC, and landmark Supreme Court and High Court judgments. "
+            "IMPORTANT: Only answer questions related to Indian law, legal procedures, court processes, "
+            "IPC sections, or legal rights. If the question is not related to law or legal matters, "
+            "politely decline and say this assistant is designed for Indian legal queries only.\n\n"
+            "Answer the following legal query precisely. Cite relevant IPC sections and landmark cases.\n\n"
+            f"Query: {query}"
         )
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
         return response.text.strip()
     except Exception as e:
         import logging
         logging.getLogger(__name__).error(f"Gemini direct answer failed: {e}")
-        return _keyword_fallback(query)
-
-
-def _keyword_fallback(query: str) -> str:
-    query_lower = query.lower()
-    if any(k in query_lower for k in ["354", "modesty", "outraging"]):
-        return "IPC Section 354 - Assault or criminal force to woman with intent to outrage her modesty.\n\nPunishment: Imprisonment of not less than 1 year, which may extend to 5 years, and fine."
-    if any(k in query_lower for k in ["376", "rape"]):
-        return "IPC Section 376 - Punishment for rape.\n\nPunishment: Rigorous imprisonment of not less than 10 years, extendable to life, and fine."
-    if any(k in query_lower for k in ["304b", "dowry", "498a"]):
-        return "IPC Section 304B - Dowry Death.\n\nKey elements: Death within 7 years of marriage after dowry harassment.\n\nPunishment: Imprisonment of not less than 7 years, extendable to life."
-    if any(k in query_lower for k in ["120b", "conspiracy"]):
-        return "IPC Section 120B - Criminal conspiracy.\n\nKey elements: Agreement between two or more persons to do an illegal act.\n\nThe agreement itself is the offence - Kehar Singh v. State (1988)."
-    if any(k in query_lower for k in ["302", "murder"]):
-        return "IPC Section 302 - Punishment for murder.\n\nPunishment: Death or imprisonment for life, and fine.\n\nRarest of rare doctrine - Bachan Singh v. State of Punjab (1980)."
-    return f"Query: '{query}'\n\nUpload case documents to enable semantic search, or configure GEMINI_API_KEY for live AI answers."
+        return f"AI research temporarily unavailable. Error: {str(e)}"
 
 
 @router.post("/query", response_model=ResearchResult)
@@ -63,46 +48,32 @@ def legal_research_query(
     )
 
     if contexts:
-        from services.rag import generate_rag_answer
         answer = generate_rag_answer(
             query=payload.query,
             contexts=contexts,
             case_id=payload.case_id,
         )
         sources = [
-            {
-                "filename": c["filename"],
-                "score": c["score"],
-                "snippet": c["text"][:300],
-                "doc_id": c.get("doc_id"),
-            }
+            {"filename": c["filename"], "score": c["score"], "snippet": c["text"][:300], "doc_id": c.get("doc_id")}
             for c in contexts
         ]
     else:
         answer = _gemini_direct_answer(payload.query)
         sources = [
-            {
-                "filename": "Gemini Legal Knowledge Base",
-                "score": 1.0,
-                "snippet": "Answer generated from Gemini training on Indian legal corpus",
-                "doc_id": None,
-            }
+            {"filename": "Gemini Legal Knowledge Base", "score": 1.0, "snippet": "Direct AI answer from Gemini", "doc_id": None}
         ]
 
-    return ResearchResult(
-        answer=answer,
-        sources=sources,
-        query=payload.query,
-    )
+    return ResearchResult(answer=answer, sources=sources, query=payload.query)
 
 
 @router.get("/precedents")
-def get_precedents(
-    ipc_section: str = None,
-    current_user: User = Depends(get_current_user),
-):
-    from routers.research import DEMO_PRECEDENTS
+def get_precedents(ipc_section: str = None, current_user: User = Depends(get_current_user)):
+    precedents = [
+        {"filename": "Bachan Singh v. State of Punjab (1980)", "score": 0.95, "text": "Rarest of rare doctrine for IPC Section 302 - death penalty."},
+        {"filename": "State of Maharashtra v. Chandraprakash Jain (1990)", "score": 0.91, "text": "IPC Section 376 - prosecutrix testimony alone can sustain conviction."},
+        {"filename": "K.M. Nanavati v. State of Maharashtra (1961)", "score": 0.88, "text": "IPC Section 302 - provocation must be grave and sudden."},
+        {"filename": "Mohd. Ajmal Kasab v. State of Maharashtra (2012)", "score": 0.82, "text": "IPC Sections 302, 120B, 34 - common intention can form at spur of moment."},
+    ]
     if ipc_section:
-        filtered = [p for p in DEMO_PRECEDENTS if ipc_section in p["text"]]
-        return filtered if filtered else DEMO_PRECEDENTS[:3]
-    return DEMO_PRECEDENTS
+        return [p for p in precedents if ipc_section in p["text"]] or precedents[:2]
+    return precedents
