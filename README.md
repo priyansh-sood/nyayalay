@@ -1,153 +1,145 @@
-# ⚖️ Nyayalay — न्यायालय Legal Case Management System
+Nyayalay – Legal Case Management System
 
-A production-ready, full-stack Legal Case Management application built for Indian courts. Supports Hindi/English, AI-powered document analysis, RAG-based legal research, intelligent cause list scheduling, and real-time deadline alerts.
+Nyayalay is a full-stack Legal Case Management System built for Indian courts. The project helps manage court cases, upload legal documents, schedule hearings, and keep track of important deadlines. It also includes AI features like document summarization and legal research using Retrieval Augmented Generation (RAG).
 
-## ✨ Features
+The main goal of this project was to explore how AI can improve the workflow of judges, advocates, and court staff while keeping the application simple and easy to use.
 
-| Feature | Description |
-|---|---|
-| 🔐 **JWT Auth** | Role-based access: Judge, Advocate, Court Clerk |
-| 📋 **Case CRUD** | Full case management with IPC sections, priority scoring, and status tracking |
-| 📄 **Document Intelligence** | Drag-drop PDF upload → EasyOCR extraction → GPT-4o-mini summary → Pinecone indexing |
-| 🔍 **Legal Research** | RAG query across case documents and 5 landmark Indian precedents |
-| 📅 **Cause List** | Auto-schedules daily hearings 10:30–16:30 by priority, duration, conflict detection |
-| 🚨 **Deadline Alerts** | Auto-flags cases within 7 days of next hearing date |
-| 🌐 **Hindi + English** | Full i18n via react-i18next, toggleable in header |
-| 🌙 **Dark Mode** | System-preference aware, persisted across sessions |
-| 🎭 **Demo Mode** | `?demo=true` loads 15 cached Indian cases instantly — no backend needed |
-| 📱 **Responsive** | Mobile-first, works at 375px (iPhone SE) |
 
-## 🏗️ Tech Stack
+Features
+User authentication with JWT
+Role-based login (Judge, Advocate and Court Clerk)
+Create, update, delete and manage legal cases
+Store IPC sections, case status and priority
+Upload court documents in PDF format
+OCR-based text extraction from scanned documents
+AI-generated summaries of uploaded documents
+RAG-based legal research using case documents and landmark judgments
+Automatic daily cause list generation
+Deadline reminders for upcoming hearings
+Hindi and English language support
+Dark mode
+Demo mode with sample cases
+Responsive interface for desktop and mobile devices
 
-**Frontend**
-- React 18 + TypeScript
-- Vite (build tool)
-- Tailwind CSS + shadcn/ui design system
-- react-router-dom v6
-- react-i18next (Hindi + English)
-- Recharts (dashboard charts)
-- react-dropzone (file upload)
-- Axios (API client)
 
-**Backend**
-- FastAPI (Python 3.11)
-- SQLAlchemy 2.0 + PostgreSQL
-- Pydantic v2
-- python-jose (JWT)
-- EasyOCR (Hindi + English OCR)
-- OpenAI gpt-4o-mini + text-embedding-ada-002
-- Pinecone v3 (vector similarity search)
-- PyPDF2 (PDF text extraction)
 
-**Infrastructure**
-- Frontend → Vercel
-- Backend → Render
-- Database → Supabase (PostgreSQL)
-- Vector DB → Pinecone (free tier)
+Tech Stack
 
-## 🚀 Quick Start (Demo Mode)
+Frontend
 
-No setup required — open in browser with demo data:
+React
+TypeScript
+Vite
+Tailwind CSS
+shadcn/ui
+React Router
+React i18next
+Axios
+Recharts
 
-```
-http://localhost:5173?demo=true
-```
+Backend
 
-Or after deploying:
-```
-https://your-app.vercel.app?demo=true
-```
 
-## 🧑‍💻 Local Development
+FastAPI
+Python
+PostgreSQL
+SQLAlchemy
+Pydantic
+JWT Authentication
+EasyOCR
+OpenAI API
+Pinecone
+PyPDF2
 
-```bash
-# 1. Clone
+
+Deployment
+
+
+Frontend – Vercel
+Backend – Render
+Database – Supabase PostgreSQL
+Vector Database – Pinecone
+
+
+
+Running the Project
+
+Clone the repository
 git clone https://github.com/YOUR_USERNAME/nyayalay.git
 cd nyayalay
 
-# 2. Backend
+Backend
 cd backend
-python -m venv venv && source venv/bin/activate
+
+python -m venv venv
+
+# Windows
+venv\Scripts\activate
+
+# Linux / macOS
+source venv/bin/activate
+
 pip install -r requirements.txt
-cp .env.example .env   # Edit with your values
-python seed.py         # Seeds 15 Indian cases + 3 demo users
+
+cp .env.example .env
+
+python seed.py
+
 uvicorn main:app --reload
 
-# 3. Frontend (new terminal)
+Frontend
 cd frontend
+
 npm install
-cp .env.example .env.local  # Set VITE_API_URL=http://localhost:8000
+
+cp .env.example .env.local
+
 npm run dev
-```
+http://localhost:5173
 
-Open http://localhost:5173
 
-## 🔑 Demo Credentials
+Sample Data
 
-| Role | Email | Password |
-|---|---|---|
-| Judge | judge@court.in | Judge@123 |
-| Advocate | lawyer@court.in | Lawyer@123 |
-| Court Clerk | clerk@court.in | Clerk@123 |
+The project comes with sample Indian legal cases covering different IPC sections, including:
 
-## 📦 Seed Data
+Murder (IPC 302)
+Attempt to Murder (IPC 307)
+Cheating (IPC 420)
+Criminal Breach of Trust (IPC 406)
+Dowry Death (IPC 304B)
+POCSO Cases
+NDPS Cases
+Bank Fraud
+Corruption Cases
 
-15 realistic Indian cases including:
-- **IPC §302** — Murder (Sessions Case, Saket Delhi)
-- **IPC §304** — Culpable homicide (Mumbai)
-- **IPC §307** — Attempt to murder with §120B (Lucknow)
-- **IPC §324** — Hurt by dangerous weapon (Bengaluru)
-- **IPC §34** — Common intention murder (Patna)
-- **IPC §120B** — Bank fraud conspiracy (CBI Court, Delhi)
-- **IPC §420** — Cheating / property fraud (Dwarka)
-- **IPC §406** — Criminal breach of trust (Pune)
-- **IPC §376** — POCSO rape case (Special Court, Chennai)
-- **IPC §354** — Outraging modesty (Mumbai)
-- Honour killing (Jaipur)
-- Corporate fraud (Hyderabad)
-- Dowry death §304B (Fast Track Court, Kanpur)
-- NDPS drug trafficking (Amritsar)
-- Disproportionate assets / corruption (Bhopal)
+These records are only for demonstration purposes.
 
-## 📋 API Endpoints
 
-```
-POST   /auth/register          Create account
-POST   /auth/login             Get JWT token
-GET    /auth/me                Current user
+POST   /auth/login
+POST   /auth/register
+GET    /auth/me
 
-GET    /cases                  List cases (search, filter, paginate)
-POST   /cases                  Create case
-GET    /cases/{id}             Get case
-PUT    /cases/{id}             Update case
-DELETE /cases/{id}             Delete case
-GET    /cases/stats/summary    Dashboard stats
+GET    /cases
+POST   /cases
+PUT    /cases/{id}
+DELETE /cases/{id}
 
-POST   /documents/upload/{id}  Upload document (PDF/image)
-GET    /documents/{id}/text    Get OCR text + AI summary
+POST   /documents/upload/{id}
 
-POST   /research/query         RAG legal research query
-GET    /research/precedents    List landmark precedents
+POST   /research/query
 
-GET    /cause-list             Auto-generated daily hearing schedule
-GET    /cause-list/week        Weekly hearing schedule
+GET    /cause-list
 
-GET    /alerts                 List deadline alerts
-POST   /alerts/{id}/read       Mark alert as read
-POST   /alerts/read-all        Mark all read
-GET    /alerts/count           Unread alert count
-```
+GET    /alerts
 
-Interactive docs: `http://localhost:8000/docs`
+Future Improvements
 
-## 🚢 Deployment
+Some features that can be added in future versions include:
 
-See [DEPLOY.md](./DEPLOY.md) for the complete step-by-step deployment guide.
+E-signature support
+Video hearing integration
+Email and SMS notifications
+Calendar synchronization
+Multi-court support
+Advanced analytics dashboard
 
-## 📄 License
-
-MIT — Free for court administration and legal technology projects.
-
----
-
-*Built with ❤️ for the Indian Judiciary*
